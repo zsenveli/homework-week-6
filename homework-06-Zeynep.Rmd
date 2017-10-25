@@ -12,33 +12,34 @@ library(ggplot2)
 f <- curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN597_Fall17/KamilarAndCooperData.csv")
 d <- read.csv(f, header = TRUE, sep = ",", stringsAsFactors = FALSE)
 head(d)
-attach(d)
 ```
-# The regression:
+# Calculating the regression equation:
 ```{r}
-attach(d)
 regression <- lm(d$MaxLongevity_m ~ d$Brain_Size_Species_Mean, data = d)
 regression
 summary(regression)
 ```
 
-# Writing up the regression equation extracting it from the coefficient matrix in the summary to later append on the graph:
+# Extracting the regression coefficients to later annotate on the graph:
 ```{r}
-attach(d)
 summary(regression)
 intercept <- summary(regression)$coefficients[1,1]
+intercept
 slope <- summary(regression)$coefficients[2,1]
 error <- summary(regression)$coefficients[1,2]
 x <- NULL
-equation <- intercept + slope*x + error
+equation <- c(intercept, "+",slope, "*", x, "+", error)
+equation
 ```
 
-# Plotting the regression equation:
+# Plotting the regression equation with the best-fitting line appended on the plot:
 ```{r}
-attach(d)
 g <- ggplot(data = d, aes(x = Brain_Size_Species_Mean, y = MaxLongevity_m))
+g <- g + labs(x="Mean Brain Size", y="Longevity")
 g <- g + geom_point()
-g <- g + geom_smooth(method = "lm", formula = y ~ x)
+g <- g + geom_smooth(method = "lm", level=0.90, formula = y ~ x)
+g <- g + annotate(geom="text", x=250, y=700, label="248.95 + 1.22*x + 11.11",
+              color="maroon")
 g
 ```
 
@@ -51,30 +52,55 @@ CI <- confint(regression, level = 0.90)
 CI
 summary(CI)
 ```
-# So my 90% CI tells me that for every 1 unit of increase in brain size, the range of the increase in longevity should fall between 1.03 and 1.40.
+# So my 90% CI tells me that for every 1 unit of increase in brain size, the range of the increase in longevity should fall between 1.03 and 1.40
 
-# My point estimate for 800mg: 
+
+# The point estimate for 800mg: 
 ```{r}
 p_estimate = intercept + slope*800 + error
 p_estimate
 ```
 
+# The confidence intervals for the predicted longevity values:
+```{r}
+t <- coef(summary(regression))
+t <- data.frame(unlist(t))
+colnames(t) <- c("Est", "SE", "t", "p")
+t$calct <- (t$Est - 0)/t$SE
+t$calcp <- 2 * pt(t$calct, df = 211, lower.tail = FALSE) 
+t
+t$lower <- t$Est - qt(0.95, df = 211) * t$SE
+t$upper <- t$Est + qt(0.95, df = 211) * t$SE
+confidence_interval <- c(t$lower, t$upper)
+confidence_interval
+```
+
 # Calculating residuals: 
 ```{r}
-m <- lm(data = d, d$MaxLongevity_m ~ d$Brain_Size_Species_Mean)
-h_hat <- predict(m, newdata = data.frame(Brain_Size_Species_Mean = d$Brain_Size_Species_Mean))
-df <- data.frame(cbind(d$Brain_Size_Species_Mean, d$MaxLongevity_m, h_hat))
-names(df) <- c("Brain Size", "Longevity", "yhat")
+r <- lm(data = d, d$MaxLongevity_m ~ d$Brain_Size_Species_Mean)
+long_hat <- predict(r, newdata = data.frame(Brain_Size_Species_Mean = d$Brain_Size_Species_Mean))
+df <- data.frame(cbind(d$Brain_Size_Species_Mean, d$MaxLongevity_m, long_hat))
+names(df) <- c("Brain Size", "Longevity", "long_hat")
 head(df)
 ```
-
-
-#Setting the prediction interval:
+# Calculating the 90% PI
+## the predict function doesn't yield the same output as it does in the module
 ```{r}
-pi <- predict(m, newdata = data.frame(Brain_Size_Species_Mean = d$Brain_Size_Species_Mean), interval = "prediction", 
-    level = 0.90)
-head(pi)
+r <- lm(data = d, d$MaxLongevity_m ~ d$Brain_Size_Species_Mean)
+long_hat <- predict(r, newdata = data.frame(Brain_Size_Species_Mean = d$Brain_Size_Species_Mean))
+df <- data.frame(cbind(d$Brain_Size_Species_Mean, d$MaxLongevity_m, long_hat))
+names(df) <- c("Brain Size", "Longevity", "long_hat")
+head(df)
+ci2 <- predict(regression, newdata = data.frame(Brain_Size_Species_Mean = d$Brain_Size_Species_Mean, interval = "confidence", 
+    level = 0.90)) # For some reason, this yields 6 columns when it should be 3.
+head(ci2)
+df2 <- cbind(log_df, log_ci2)
+names(df2) <- c("Brain Size", "Longevity", "log_long_hat", "CIfit", "CIlwr", "CIupr")
+head(df2)
 ```
+
+######### LOG TRANSFORMING THE DATA ##########
+
 
 
 
@@ -93,21 +119,53 @@ log_regression
 summary(log_regression)
 ```
 
+# Regression coefficients: 
+```{r}
+summary(log_regression)
+log_intercept <- summary(log_regression)$coefficients[1,1]
+log_intercept
+log_slope <- summary(log_regression)$coefficients[2,1]
+log_error <- summary(log_regression)$coefficients[1,2]
+x <- NULL
+log_equation <- c(log_intercept, "+",log_slope, "*", x, "+", log_error)
+log_equation
+```
+
+# 90% Confidence Interval:
+```{r}
+log_CI <- confint(log_regression, level = 0.90)
+log_CI
+summary(log_CI)
+```
+
+# Adding 90# PI:
+## isn't working: the predict function doesn't yield the same output as it does in the module
+```{r}
+log_r <- lm(data = d, log(d$MaxLongevity_m) ~ log(d$Brain_Size_Species_Mean))
+log_long_hat <- predict(log_r, newdata = data.frame(Brain_Size_Species_Mean = log(d$Brain_Size_Species_Mean)))
+log_df <- data.frame(cbind(log(d$Brain_Size_Species_Mean), log(d$MaxLongevity_m), log_long_hat))
+names(log_df) <- c("log_Brain Size", "log_Longevity", "log_long_hat")
+head(log_df)
+log_ci2 <- predict(log_regression, newdata = data.frame(Brain_Size_Species_Mean = log(d$Brain_Size_Species_Mean), interval = "confidence", 
+    level = 0.90)) # For some reason, this yields 6 columns when it should be 3.
+head(log_ci2)
+log_df2 <- cbind(log_df, log_ci2)
+names(log_df2) <- c("log_Brain Size", "log_Longevity", "log_long_hat", "log_CIfit", "log_CIlwr", "log_CIupr")
+head(log_df2)
+```
+
 # Plotting the graph for log values:
 ```{r}
-attach(d)
 g_log <- ggplot(data = d, aes(x = log(d$Brain_Size_Species_Mean), y = log(d$MaxLongevity_m)))
+g_log <- g_log + labs(x="log(Mean Brain Size)", y="log(Longevity)")
 g_log <- g_log + geom_point()
 g_log <- g_log + geom_smooth(method = "lm", formula = y ~ x)
+g_log <- g_log + annotate(geom="text", x=1.5, y=6, label="4.87 + 0.23*x + 0.07",
+              color="darkorange")
 g_log
 ```
-```{r}
-CI_log <- confint(regression, level = 0.90)
-CI_log
-summary(CI_log)
-```
 
-# Our preditor variable is the log of brain size and our output variable is the log of longevity. For every 1 unit change in log of brain size, there will be a 0.23 increase in longevity. Looking at my F-statistic to see if I can reject/fail to reject my null hypothesis, and my results are F(1,126)=172.9, p < 2.2e-16, which allows me to very certainly reject null hypothesis because my p value is very significant.
 
+# Our preditor variable is the log of brain size and our output variable is the log of longevity. For every 1 unit change in log of brain size, there will be a 0.26 increase in longevity. Looking at my F-statistic to see if I can reject/fail to reject my null hypothesis, and my results are F(1,126)=172.9, p < 2.2e-16, which allows me to very certainly reject null hypothesis because my p value is very significant.
 
 # Looking at the two models, the log one is better because the coefficient of determination in the log model is 57% while it is 49% for the first model. This means that the log values of the brain size mean accounts for a greater proportion of the variance we see in the log values of longevity. 
