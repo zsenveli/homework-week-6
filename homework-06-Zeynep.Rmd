@@ -98,6 +98,7 @@ df2 <- cbind(log_df, log_ci2)
 names(df2) <- c("Brain Size", "Longevity", "log_long_hat", "CIfit", "CIlwr", "CIupr")
 head(df2)
 ```
+ 
 
 ######### LOG TRANSFORMING THE DATA ##########
 
@@ -169,3 +170,5 @@ g_log
 # Our preditor variable is the log of brain size and our output variable is the log of longevity. For every 1 unit change in log of brain size, there will be a 0.26 increase in longevity. Looking at my F-statistic to see if I can reject/fail to reject my null hypothesis, and my results are F(1,126)=172.9, p < 2.2e-16, which allows me to very certainly reject null hypothesis because my p value is very significant.
 
 # Looking at the two models, the log one is better because the coefficient of determination in the log model is 57% while it is 49% for the first model. This means that the log values of the brain size mean accounts for a greater proportion of the variance we see in the log values of longevity. 
+
+# Because I can't generate the PI for my predicted values neither for the first case or after log transformation, I couldn't add it to the graph.
